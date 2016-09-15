@@ -8,8 +8,12 @@ __dir__ = os.path.dirname(os.path.realpath(__file__))
 
 app = Flask(__name__, template_folder=__dir__ + '/templates')
 app.config['STATIC_FOLDER'] = __dir__ + '/static'
+app.config['ES_SETTINGS'] = {}
 
-es = Elasticsearch()
+es = Elasticsearch(
+    app.config['ES_SETTINGS'].get('hosts', 'localhost'),
+    **app.config['ES_SETTINGS'].get('kwargs', {})
+)
 
 @app.route('/')
 def index():
