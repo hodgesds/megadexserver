@@ -129,6 +129,16 @@ nav {
     </div>
 
 <script>
+var onPdfResult = function (result) {
+    console.log(result);
+	$("#results").append("<p>file: " + result._source.filename + "</p>");
+};
+
+var onResult = function (result) {
+	$("#results").append("<p>file: " + result._source.filename + "</p>");
+}
+
+
 $( document ).ready(function() {
     $( "#search" ).submit(function( event ) {
         event.preventDefault();
@@ -138,16 +148,26 @@ $( document ).ready(function() {
             return
         }
 
-        url = "/search?q=*" + q + "*";
+        url = "/search?q=" + q + "*";
 
         $("#results").empty();
 
-        console.log(url);
-
         $.getJSON(url, function( data ) {
+			console.log(data);
+			total = data.hits.total;
             data.hits.hits.forEach(function(entry){
-                console.log(entry);
-                $("#results").append("<p>file: " + entry._source.filename + "</p>");
+                try {
+					switch(entry._type) {
+						case "pdf":
+							onPdfResult(entry);
+							break;
+						default:
+							onResult(entry);
+					}
+				}
+				catch(err) {
+					console.log(err);
+				}
             });
         })
     });
