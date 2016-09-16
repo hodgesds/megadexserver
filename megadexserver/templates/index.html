@@ -5,173 +5,255 @@
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
 
 </head>
 <style>
-/* Move down content because we have a fixed navbar that is 50px tall */
-body {
-  padding-top: 50px;
-}
-nav {
-  color:bisque;
-}
-
-/*
- * Global add-ons
- */
-
-.sub-header {
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-/*
- * Top navigation
- * Hide default border to remove 1px line.
- */
-.navbar-fixed-top {
-  border: 0;
-}
-
-/*
- * Sidebar
- */
-
-/* Hide for mobile, show later */
-.sidebar {
-  display: none;
-}
-@media (min-width: 768px) {
-  .sidebar {
-    position: fixed;
-    top: 51px;
-    bottom: 0;
-    left: 0;
-    z-index: 1000;
-    display: block;
-    padding: 20px;
-    overflow-x: hidden;
-    overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
-    background-color: #f5f5f5;
-    border-right: 1px solid #eee;
-  }
-}
-
-/*
- * Main content
- */
-
-.main {
-  padding: 20px;
-}
-@media (min-width: 768px) {
-  .main {
-    padding-right: 40px;
-    padding-left: 40px;
-  }
-}
-.main .page-header {
-  margin-top: 0;
-}
-
-
-/*
- * Placeholder dashboard ideas
- */
-
-.placeholders {
-  margin-bottom: 30px;
-  text-align: center;
-}
-.placeholders h4 {
-  margin-bottom: 0;
-}
-.placeholder {
-  margin-bottom: 20px;
-}
-.placeholder img {
-  display: inline-block;
-  border-radius: 50%;
-}
 </style>
 
 <body>
+	<nav class="navbar navbar-default" role="navigation">
+	  <div class="container">
 
-    <nav class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container-fluid">
-        <h1>Megadex</h1>
-      </div>
+		<div class="navbar-header">
+		  <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapsible">
+			<span class="sr-only">Toggle navigation</span>
+			<span class="icon-bar"></span>
+		  </button>
+		  <a class="navbar-brand" href="#">Megadex</a>
+		</div>
 
-      </div>
-    </nav>
+		<div class="navbar-collapse collapse" id="navbar-collapsible">
+
+		  <form id="search" class="navbar-form">
+			<div class="form-group" style="display:inline;">
+			  <div class="input-group">
+				<input id="searchInput" type="text" class="form-control" autofocus>
+				<span class="input-group-addon"><span class="glyphicon glyphicon-search"></span></span>
+			  </div>
+			</div>
+		  </form>
+
+		</div>
+
+	  </div>
+	</nav>
 
     <div class="container-fluid">
       <div class="row">
-        <div class="col-sm-3 col-md-2 sidebar">
-          <ul class="nav nav-sidebar">
-        <div id="navbar" class="navbar-collapse collapse">
-          <form id="search" class="navbar-form navbar-right">
-           <p>Enter Query here:
-            <input id="searchInput" type="text" class="" placeholder="Search..."></input>
-           </p>
-          </form>
-
-        </div>
-          </ul>
-        </div>
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-          <h2 class="sub-header">Section title</h2>
-          <div id="results" class="">
+          <div id="results" class="results">
+          </div>
+          <div id="pages" class="pages">
+			<ul class="pagination"></ul>
           </div>
         </div>
       </div>
     </div>
 
 <script>
+var isSearching = false;
+var total = 0;
+var lastPage = 0;
+var firstPage = 1;
+
+{% if page is not none %}
+	var page = {{page}};
+{% else %}
+	var page = 1;
+{% endif %}
+
+{% if count is not none %}
+	var defaultCount = {{count}};
+{% else %}
+	var defaultCount = 15;
+{% endif %}
+
 var onPdfResult = function (result) {
+	var path = result._source.filename;
     console.log(result);
-	$("#results").append("<p>file: " + result._source.filename + "</p>");
+	$("#results").append(
+		"<h4><a href='" + path + "'>" + path + "</a></h4>" +
+		"<p class='meta'>page: " + result._source.page + "</p>" +
+		"<p class='meta'>" + result._source.text.substring(0, 300) + " …</p>"
+	);
 };
 
 var onResult = function (result) {
-	$("#results").append("<p>file: " + result._source.filename + "</p>");
+	$("#results").append("<h3>" + result._source.filename + "</h3>");
 }
 
+var doSearch = function(q, count, page){
+    count = (typeof count !== 'undefined') ? count : defaultCount;
+    page = (typeof page !== 'undefined') ? page : 0;
 
-$( document ).ready(function() {
-    $( "#search" ).submit(function( event ) {
-        event.preventDefault();
+    if (typeof q == 'undefined' || q == '') {
+		return
+	}
 
-        q = $( "#searchInput" ).val();
-        if (!q) {
-            return
-        }
+	url = "/search?q=" + q + "*&count=" + count + "&page=" + page;
 
-        url = "/search?q=" + q + "*";
+	$("#results").empty();
+	$("#pages ul").empty();
 
-        $("#results").empty();
+    console.log(url);
 
-        $.getJSON(url, function( data ) {
-			console.log(data);
-			total = data.hits.total;
-            data.hits.hits.forEach(function(entry){
-                try {
-					switch(entry._type) {
-						case "pdf":
-							onPdfResult(entry);
-							break;
-						default:
-							onResult(entry);
-					}
+	$.getJSON(url, function( data ) {
+		console.log(data);
+		total = data.hits.total;
+		data.hits.hits.forEach(function(entry){
+			try {
+				switch(entry._type) {
+					case "pdf":
+						onPdfResult(entry);
+						break;
+					default:
+						onResult(entry);
 				}
-				catch(err) {
-					console.log(err);
+			}
+			catch(err) {
+				console.log(err);
+			}
+		});
+
+		lastPage = Math.ceil(total / count);
+
+		console.log(total);
+		if (total > 10) {
+
+			if ( page > 10) {
+				$("#pages ul").append('<li><a id="firstPage" href="#">1</a></li>');
+				$("#pages ul").append('<li><a id="prevSkip" href="#">«</a></li>');
+				$("#pages ul").append('<li><a id="prevPage" href="#">‹</a></li>');
+
+				$("#prevPage").click(function(event){
+					event.preventDefault();
+					doSearch(q, count, page-1);
+				});
+
+				$("#prevSkip").click(function(event){
+					event.preventDefault();
+					doSearch(q, count, page-10);
+				});
+
+				$("#firstPage").click(function(event){
+					event.preventDefault();
+					doSearch(q, count, firstPage);
+				});
+			}
+
+			var start = page;
+			var _end = start + 10;
+
+			if (page == lastPage){
+				start = start - 10;
+				_end = lastPage;
+			}
+			if (_end > lastPage) {
+				_end = lastPage;
+			}
+
+			_.range(start, _end).forEach(function(i, _){
+				if  ( i == page) {
+					$("#pages ul").append(
+						'<li class="active pageResult" page="' + i + '"><a href="#">' + i + '</a></li>'
+					);
+				} else {
+					$("#pages ul").append(
+						'<li class="pageResult" page="' + i + '"><a href="#">' + i + '</a></li>'
+					);
 				}
-            });
-        })
-    });
+				if (i > _end) {
+					return
+				}
+			});
+
+			if (page < lastPage) {
+				$("#pages ul").append('<li><a id="nextPage" href="#">›</a></li>');
+				if (page < lastPage - 10) {
+					$("#pages ul").append('<li><a id="nextSkip" href="#">»</a></li>');
+
+					$("#nextSkip").click(function(event){
+						event.preventDefault();
+						doSearch(q, count, page+10);
+					});
+				}
+
+				$("#pages ul").append('<li><a id="lastPage" href="#">' + lastPage + '</a></li>');
+
+				$("#nextPage").click(function(event){
+					event.preventDefault();
+					doSearch(q, count, page+1);
+				});
+			}
+
+			if (page == lastPage) {
+				$("#pages ul").append('<li class="active"><a id="lastPage" href="#">' + lastPage + '</a></li>');
+			}
+
+
+			$("#lastPage").click(function(event){
+				event.preventDefault();
+				doSearch(q, defaultCount, lastPage);
+			});
+
+		} else {
+
+			_.range(1, total).forEach(function(i, _){
+				if  (i == page) {
+					$("#pages ul").append('<li class="active pageResult" page="' + i + '"><a href="#">' + i + '</a></li>');
+				} else {
+					$("#pages ul").append('<li class="pageResult" page="' + i + '"><a href="#">' + i + '</a></li>');
+				}
+			});
+
+		}
+
+		$(".pageResult").click(function(event){
+			event.preventDefault();
+			doSearch(q, defaultCount, Math.round($(this).attr('page')));
+		});
+	})
+
+}
+
+$("#searchInput").keyup(
+	_.debounce(function(){
+		q = $( "#searchInput" ).val();
+		if (!q) {
+			return
+		}
+		doSearch(q, defaultCount);
+	}, 500)
+);
+
+
+$("#search").submit(function( event ) {
+	event.preventDefault();
+
+	q = $( "#searchInput" ).val();
+	if (!q) {
+		return
+	}
+
+    doSearch(q, defaultCount);
 });
+
+{% if q is not none %}
+  {% if count is not none %}
+    {% if page is not none %}
+      doSearch('{{q}}', {{count}}, {{page}}); 
+    {% else %}
+      doSearch('{{q}}', {{count}}); 
+    {% endif %}
+  {% else %}
+    {% if page is not none %}
+      doSearch('{{q}}', defaultCount, {{page}}); 
+    {% else %}
+      doSearch('{{q}}', defaultCount); 
+    {% endif %}
+  {% endif %}
+{% endif %}
 </script>
 
   </body>

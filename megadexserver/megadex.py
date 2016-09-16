@@ -17,26 +17,27 @@ es = Elasticsearch(
 
 @app.route('/')
 def index():
-    user = {'nickname': 'Miguel'}  # fake user
     return render_template(
-       'index.html',
-       title ='Home',
-       user = user
-   )
+        'index.html',
+        q = request.args.get('q'),
+        count = request.args.get('count', 10),
+        page  = request.args.get('page', 0),
+        title ='Home',
+    )
 
 @app.route('/search')
 def hello_world():
     q = request.args.get('q', '')
     index = request.args.get('index', '')
-    count = request.args.get('count', 10)
-    page  = request.args.get('page', 0)
+    count = int(request.args.get('count', 10))
+    page  = int(request.args.get('page', 0))
 
     try:
         res = es.search(
             index = index,
             q     = q,
             size  = count,
-            from_ = page,
+            from_ = page*count,
         )
     except Exception as e:
         return jsonify(e.info), 500
