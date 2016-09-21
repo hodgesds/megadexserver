@@ -4,7 +4,7 @@ setup(
     name             = "megadexserver",
     description      = "Mega Indexer Server",
     url              = "https://github.com/hodgesds/megadex-server",
-    version          = "0.0.2",
+    version          = "0.0.5",
     author           = "Daniel Hodges",
     author_email     = "hodges.daniel.scott@gmail.com",
     include_package_data = True,

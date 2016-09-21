@@ -71,7 +71,6 @@ var firstPage = 1;
 
 var onPdfResult = function (result) {
 	var path = result._source.filename;
-    console.log(result);
 	$("#results").append(
 		"<h4><a href='" + path + "'>" + path + "</a></h4>" +
 		"<p class='meta'>page: " + result._source.page + "</p>" +
@@ -80,7 +79,10 @@ var onPdfResult = function (result) {
 };
 
 var onResult = function (result) {
-	$("#results").append("<h3>" + result._source.filename + "</h3>");
+	var path = result._source.filename;
+	$("#results").append(
+		"<h4><a href='" + path + "'>" + path + "</a></h4>"
+	);
 }
 
 var doSearch = function(q, count, page){
@@ -95,8 +97,6 @@ var doSearch = function(q, count, page){
 
 	$("#results").empty();
 	$("#pages ul").empty();
-
-    console.log(url);
 
 	$.getJSON(url, function( data ) {
 		console.log(data);
@@ -118,13 +118,14 @@ var doSearch = function(q, count, page){
 
 		lastPage = Math.ceil(total / count);
 
-		console.log(total);
 		if (total > 10) {
+            if ( page > 1) {
+                $("#pages ul").append('<li><a id="prevSkip" href="#">«</a></li>');
+                $("#pages ul").append('<li><a id="prevPage" href="#">‹</a></li>');
+            }
 
 			if ( page > 10) {
 				$("#pages ul").append('<li><a id="firstPage" href="#">1</a></li>');
-				$("#pages ul").append('<li><a id="prevSkip" href="#">«</a></li>');
-				$("#pages ul").append('<li><a id="prevPage" href="#">‹</a></li>');
 
 				$("#prevPage").click(function(event){
 					event.preventDefault();
@@ -140,7 +141,7 @@ var doSearch = function(q, count, page){
 					event.preventDefault();
 					doSearch(q, count, firstPage);
 				});
-			}
+            }
 
 			var start = page;
 			var _end = start + 10;
@@ -150,8 +151,13 @@ var doSearch = function(q, count, page){
 				_end = lastPage;
 			}
 			if (_end > lastPage) {
+                start -=  _end - lastPage;
 				_end = lastPage;
 			}
+            if ( page < 10 ) {
+                start = 1;
+                _end = 10;
+            }
 
 			_.range(start, _end).forEach(function(i, _){
 				if  ( i == page) {
